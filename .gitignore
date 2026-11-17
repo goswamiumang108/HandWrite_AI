@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+.DS_Store
+artifacts/*
+!artifacts/.gitkeep
+data/pendigits/
+data/custom_digits/*
+!data/custom_digits/README.md

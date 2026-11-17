@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+ * { box-sizing:border-box; }
+ body { background:transparent; margin:0; color:#e5f0f3; font-family:system-ui,sans-serif; }
+ .wrap { display:flex; align-items:flex-start; flex-wrap:wrap; gap:16px; padding:4px 0; }
+ canvas { width:256px; height:256px; background:#000; border:1px solid #64748b;
+          border-radius:12px; cursor:crosshair; touch-action:none; }
+ .aside { width:160px; max-width:100%; font-size:13px; line-height:1.5; }
+ button { padding:8px 15px; border-radius:9px; border:1px solid #64748b;
+          color:#fff; background:#243447; cursor:pointer; margin:10px 0; }
+ button:hover { background:#315367; }
+ .note { color:#aac3cf; }
+</style></head>
+<body>
+<div class="wrap">
+ <canvas id="pad" width="256" height="256" aria-label="Draw a handwritten digit"></canvas>
+ <div class="aside"><strong>Draw one digit</strong><p class="note">White ink on a black canvas. Mouse or touch supported.</p>
+ <button id="clear">Clear drawing</button><div id="status" class="note">Draw here, then select Recognize digit.</div></div>
+</div>
+<script>
+(() => {
+ const pad = document.getElementById('pad'), ctx = pad.getContext('2d');
+ const status = document.getElementById('status');
+ let active = false, hasStrokes = false;
+ ctx.fillStyle='#000000'; ctx.fillRect(0,0,pad.width,pad.height);
+ ctx.strokeStyle='#ffffff'; ctx.lineWidth=18; ctx.lineJoin='round'; ctx.lineCap='round';
+ function send(message) {
+   window.parent.postMessage({isStreamlitMessage:true,...message},'*');
+ }
+ function point(e) {
+   const rect=pad.getBoundingClientRect();
+   return {x:(e.clientX-rect.left)*pad.width/rect.width,
+           y:(e.clientY-rect.top)*pad.height/rect.height};
+ }
+ pad.addEventListener('pointerdown', e => {
+   e.preventDefault(); active=true; pad.setPointerCapture(e.pointerId);
+   const p=point(e); ctx.beginPath(); ctx.moveTo(p.x,p.y);
+   ctx.lineTo(p.x+.02,p.y+.02); ctx.stroke(); hasStrokes=true;
+ });
+ pad.addEventListener('pointermove', e => {
+   if (!active) return; e.preventDefault(); const p=point(e);
+   ctx.lineTo(p.x,p.y); ctx.stroke();
+ });
+ function finish(e) {
+   if(!active) return;
+   active=false; status.textContent='Drawing ready for recognition.';
+   if(hasStrokes) send({type:'streamlit:setComponentValue',value:pad.toDataURL('image/png')});
+ }
+ pad.addEventListener('pointerup',finish);
+ pad.addEventListener('pointercancel',finish);
+ document.getElementById('clear').onclick=() => {
+   ctx.fillStyle='#000000'; ctx.fillRect(0,0,pad.width,pad.height);
+   ctx.fillStyle='#ffffff'; ctx.beginPath(); hasStrokes=false;
+   status.textContent='Canvas cleared.';
+   send({type:'streamlit:setComponentValue',value:''});
+ };
+ window.addEventListener('message',e => {
+   if(e.data && e.data.type==='streamlit:render') {
+     send({type:'streamlit:setFrameHeight',height:305});
+   }
+ });
+ send({type:'streamlit:componentReady',apiVersion:1});
+ send({type:'streamlit:setFrameHeight',height:305});
+})();
+</script>
+</body></html>
